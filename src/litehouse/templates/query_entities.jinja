@@ -1,0 +1,81 @@
+{% from 'base.jinja' import get_messages with context %}
+
+
+{% macro entity_breadcrumbs(hx_swap_oob=False) -%}
+<nav id="base_nav_breadcrumbs"
+     class="navbar navbar-expand-lg bg-primary-subtle text-primary-emphasis"
+     {% if hx_swap_oob -%} hx-swap-oob="outerHTML:#base_nav_breadcrumbs" {%- endif %}>
+    <div class="container-fluid">
+        <nav aria-label="breadcrumb" class="d-inline-block">
+            <ol class="breadcrumb fs-6 fw-bold">
+                <li class="breadcrumb-item">Query</li>
+                <li class="breadcrumb-item active" aria-current="page">Entities</li>
+            </ol>
+        </nav>
+        <div class="ms-auto">
+            <strong>Selected Org</strong> <button class="btn btn-primary btn-sm" onclick="location.href='{{ url_for('orgs.index') }}'">{{ connection['name'] }}</button> <button class="btn btn-primary btn-sm" onclick="location.href='{{ connection['url'] }}'"><i class="bi bi-box-arrow-up-right"></i></button>
+        </div>
+    </div>
+</nav>
+{%- endmacro %}
+
+
+{% macro query_entities() -%}
+<div id="entities" class="border-start border-end border-secondary-subtle col-5 rounded-start-3">
+    <h4>Entities</h4>
+    <div class="mb-2">
+        <input type="text"
+               class="form-control"
+               name="list_search"
+               id="list_search"
+               placeholder="Filter Entities"
+               onkeyup="filter_list()"
+               autocomplete="off">
+    </div>
+
+    {# Entities List #}
+    <div id="entity_list" class="overflow-auto" style="max-height: 74vh;">
+        <ul id="list_items" class="list-group">
+            {% for entity in entities %}
+            <li class="list-group-item"
+                hx-get="{{ url_for('query.entity_fields', entity_id=entity['Id'], entity_name=entity['EntityName'], entity_label=entity['EntityLabel']) }}"
+                hx-swap="outerHTML"
+                hx-target="#entities"
+                hx-trigger="click"
+                hx-indicator="#entity_indicator_{{ entity['EntityName'] }}">
+                <span>
+                    <a href="#" title="Entity ID: {{ entity['Id'] }}" style="text-decoration: none; color: inherit;">
+                        <div class="container">
+                            <div class="row">
+                                <div class="col">
+                                    {{ entity['EntityLabel'] }}
+                                    <img id="entity_indicator_{{ entity['EntityName'] }}" class="htmx-indicator" height="15px" src="{{ url_for('static', filename='bars.svg') }}"/>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col" style="font-size: 12px;">
+                                    {{ entity['EntityName'] }}
+                                </div>
+                                <div class="col-4 text-end">
+                                    {% if entity['SystemFlag'] == '0' -%} <i class="bi bi-c-square" title="Custom Entity"></i> {%- endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{%- endmacro %}
+
+
+{# Insert or Swap Entity List #}
+{{ query_entities() }}
+
+{# Update Breadcrumbs #}
+{{ entity_breadcrumbs(hx_swap_oob=True) }}
+
+{# Flash Message (if any) #}
+{{ get_messages(hx_swap_oob=True) }}

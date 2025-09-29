@@ -1,0 +1,11 @@
+{% from 'base.jinja' import get_messages with context %}
+
+{# Swap the Save Query Button #}
+<button id="save_query_button"
+        type="button"
+        class="btn btn-outline-dark"
+        hx-swap-oob="outerHTML:#save_query_button"><i class="bi bi-floppy-fill"></i> Query Saved!
+</button>
+
+{# Flash Message (if any) #}
+{{ get_messages() }}

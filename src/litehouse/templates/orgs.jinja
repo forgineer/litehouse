@@ -1,0 +1,248 @@
+{% extends 'base.jinja' %}
+{% import 'form_macros.jinja' as form %}
+
+
+{% macro set_nav_links(hx_swap_oob=False) -%}
+<div id="collapsibleNavbar"
+     class="collapse navbar-collapse"
+     {% if hx_swap_oob -%} hx-swap-oob="innerHTML:#collapsibleNavbar" {%- endif %}>
+    <ul class="navbar-nav">
+
+        {# Orgs (Connections) View Navigation #}
+        <li id="orgs_nav_item" class="nav-item">
+            <a class="nav-link active"
+               href="#"
+               title="ORGS"><i class="bi bi-building-fill-gear"></i> ORGS
+            </a>
+        </li>
+
+        {# Query View Navigation. For Entity, Bulk Data Backups, etc. #}
+        <li id="query_nav_item" class="nav-item">
+            <a class="nav-link"
+               href="{{ url_for('query.index') }}"
+               title="QUERY"><i class="bi bi-search"></i> QUERY
+            </a>
+        </li>
+    </ul>
+</div>
+{%- endmacro %}
+
+
+{% macro set_modals(hx_swap_oob=False) -%}
+<div id="base_modals"
+     {% if hx_swap_oob -%} hx-swap-oob="outerHTML:#base_modals" {%- endif %}>
+    {# Create Connection Modal #}
+    <div class="modal fade" id="createConnectionModal" tabindex="-1">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header text-light bg-primary-subtle" data-bs-theme="dark">
+                    <h5 class="modal-title">Add New Connection</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="create_connection"
+                          autocomplete="off"
+                          hx-post="{{ url_for('orgs.create_connection') }}"
+                          hx-swap="outerHTML"
+                          hx-target="#base_messages">
+
+                        {# Connection Name and Base URL #}
+                        {{ form.add_input(id='name', label='Connection Name:', required=True) }}
+                        {{ form.add_input(id='url', label='BillingPlatform Base URL:', required=True) }}
+
+                        {# Username and Password #}
+                        <hr><br><h5 class="text-primary">Login Credentials (Session)</h3>
+                        {{ form.add_input(id='username', label='Username:', required=True) }}
+                        {{ form.add_input(id='password', type='password', label='Password:', required=True) }}
+
+                        {# OAuth Client Id and Secret #}
+                        <hr><br><h5 class="text-success">Inbound OAuth Key</h3>
+                        {{ form.add_input(id='client_id', type='password', label='Client ID:') }}
+                        {{ form.add_input(id='client_secret', type='password', label='Client Secret:') }}
+
+                        {# Selection of Session or OAuth as method for login #}
+                        <hr><br><h5 class="text-danger">API Settings</h3>
+                        <p>Modify API use setting here such as authenticating with a session vs. OAuth token.</p>
+                        <div class="mb-2 p-3">
+                            {{ form.add_radio(id='session', name='auth_mode', value='Session', default=True) }}
+                            {{ form.add_radio(id='oauth', name='auth_mode', value='OAuth') }}
+                        </div>
+
+                        {# Auth and REST version override controls #}
+                        <br><p>If the Auth or REST APIs use different versions between orgs they can be adjusted here:</p>
+                        {{ form.add_input(id='auth_version', label='Auth Version:', placeholder='1.0') }}
+                        {{ form.add_input(id='rest_version', label='REST Version:', placeholder='2.0') }}
+
+                        {# SSL Certificate Path #}
+                        <br><p>Provide a path to an external SSL Certificate for authenticating REST services:</p>
+                        {{ form.add_input(id='cert_path', label='SSL Certificate Path:') }}
+                    </form>
+                </div>
+                <div class="modal-footer bg-primary-subtle" data-bs-theme="dark">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success" form="create_connection">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Update Connection Modal #}
+    <div class="modal fade" id="updateConnectionModal" tabindex="-1">
+        <div class="modal-dialog modal-fullscreen">
+            <div id="updateConnection" class="modal-content">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Updating...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Delete Connection Modal #}
+    <div class="modal fade" id="deleteConnectionModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div id="deleteConnection" class="modal-content">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Updating...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{%- endmacro %}
+
+
+{% macro list_connections(connections, enabled_connection, hx_swap_oob=False) -%}
+<div id="org_connections"
+     class="container overflow-auto p-3"
+     style="max-height: 90vh;"
+     {% if hx_swap_oob -%} hx-swap-oob="outerHTML:#org_connections" {%- endif %}>
+    <h1>BillingPlatform Connections</h1>
+    <div class="p-3">
+        <button type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#createConnectionModal"
+                class="btn btn-primary"
+                title="Add New Connection"><i class="bi bi-plus-circle"></i> Add New Connection
+        </button>
+    </div>
+
+    {# Loop through each set of connections and display them in a "Jumbotron" type of box to distinguish each #}
+    {% for connection in connections.values() %}
+    <div class="my-4">
+        <div class="card border border-secondary-subtle">
+            {% if enabled_connection == connection['id'] -%}
+            <div class="card-header text-center text-light bg-success" data-bs-theme="dark">
+                <b>ENABLED</b>
+            </div>
+            {%- endif %}
+            <div class="card-body">
+                <h4 class="card-title">{{ connection['name'] }}</h4>
+                <div class="d-flex">
+
+                    {# Base BillingPlatform URL #}
+                    <div class="me-3">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text text-light bg-secondary">Base URL</span>
+                            <input type="text" size="{{ connection['url'] | length }}" class="form-control" value="{{ connection['url'] }}" readonly>
+                            <button class="btn btn-primary" type="button" onclick="location.href='{{ connection['url'] }}'"><i class="bi bi-box-arrow-up-right"></i></button>
+                        </div>
+                    </div>
+
+                    {# Authentication Method #}
+                    <div class="me-3">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text text-light bg-secondary">Authentication</span>
+                            <input type="text" class="form-control" value="{{ connection['auth_mode'] }}" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-end">
+                <div class="flex-grow-0">
+
+                    {# Delete Connection #}
+                    <button type="button"
+                            class="btn btn-danger btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteConnectionModal"
+                            title="Delete"
+                            hx-get="{{ url_for('orgs.update_modal', method='delete', connection_id=connection['id']) }}"
+                            hx-target="#deleteConnection"
+                            hx-trigger="click"><i class="bi bi-trash3-fill"></i> Delete
+                    </button>
+
+                    {# Test Connection #}
+                    <button type="button"
+                            class="btn btn-warning btn-sm"
+                            title="Test Connection"
+                            hx-get="{{ url_for('orgs.test_connection', connection_id=connection['id']) }}"
+                            hx-target="#base_messages"
+                            hx-trigger="click"
+                            hx-indicator="#indicator_{{ connection['id'] }}"
+                            hx-disabled-elt="this">
+                        <i class="bi bi-broadcast"></i> Test Connection
+                        <img id="indicator_{{ connection['id'] }}" class="htmx-indicator" height="15px" src="{{ url_for('static', filename='bars.svg') }}"/>
+                    </button>
+
+                    {# Update Connection #}
+                    <button type="button"
+                            class="btn btn-primary btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#updateConnectionModal"
+                            title="Edit"
+                            hx-get="{{ url_for('orgs.update_modal', method='update', connection_id=connection['id']) }}"
+                            hx-target="#updateConnection"
+                            hx-trigger="click"><i class="bi bi-pencil-fill"></i> Edit
+                    </button>
+
+                    {% if enabled_connection != connection['id'] -%}
+                    {# Enable Connection #}
+                    <button type="button"
+                            class="btn btn-success btn-sm"
+                            title="Enable"
+                            hx-post="{{ url_for('orgs.enable_connection', connection_id=connection['id']) }}"
+                            hx-target="#base_messages"
+                            hx-trigger="click">Enable
+                    </button>
+                    {%- endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="container text-center text-primary">
+        <h2>No connections 😕 Create one to get started!</h2>
+    </div>
+    {% endfor %}
+</div>
+<script>
+    {% include 'close_modal.js' %}
+</script>
+{%- endmacro %}
+
+
+{% macro set_script(hx_swap_oob=False) -%}
+<script id="base_script"
+       {% if hx_swap_oob -%} hx-swap-oob="outerHTML:#base_script" {%- endif %}>
+</script>
+{%- endmacro %}
+
+
+{% block base_nav_links %}
+    {{ set_nav_links() }}
+{% endblock %}
+
+
+{% block base_modals %}
+    {{ set_modals() }}
+{% endblock %}
+
+
+{% block base_main %}
+    {{ list_connections(connections, enabled_connection) }}
+{% endblock %}
+
+
+{% block base_script %}
+    {{ set_script() }}
+{% endblock %}

@@ -1,0 +1,83 @@
+{% import 'form_macros.jinja' as form %}
+
+
+<div class="modal-header text-light bg-primary-subtle" data-bs-theme="dark">
+    <h5 class="modal-title">Saved Queries</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    {% for query in saved_queries.values() %}
+    <div class="p-3">
+        <div class="card border border-primary-subtle">
+            <div class="card-body">
+                <h5 class="card-title">{{ query['name'] }}</h5>
+                <form id="{{ query['id'] }}"
+                      autocomplete="off"
+                      hx-post="{{ url_for('query.query_data') }}"
+                      hx-swap="outerHTML"
+                      hx-target="#base_messages">
+                      
+                    {# Query Name ID (hidden) #}
+                    {# This input indicates that this is a SAVED query #}
+                    {{ form.add_input(id=query['name_id'], type="hidden", value=query['name'], readonly=True) }}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                            {# Query Text #}
+                            {{ form.add_textarea(id=query['text_id'], value=query['text'], rows=6, readonly=True) }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                        
+                            {# Limit #}
+                            <div class="input-group mb-3">
+                                <span class="input-group-text text-light bg-secondary">Limit</span>
+                                <input type="number" name="{{ query['limit_id'] }}" id="{{ query['limit_id'] }}" class="form-control" value="{{ query['limit'] }}" readonly>
+                            </div>
+
+                            {# Offset #}
+                            <div class="input-group mb-3">
+                                <span class="input-group-text text-light bg-secondary">Offset</span>
+                                <input type="number" name="{{ query['offset_id'] }}" id="{{ query['offset_id'] }}" class="form-control" value="{{ query['offset'] }}" readonly>
+                            </div>
+
+                            {# Entity #}
+                            <div class="input-group mb-3">
+                                <span class="input-group-text text-light bg-secondary">Entity</span>
+                                <input type="text" name="Entity" class="form-control" value="{{ query['entity'] }}" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer d-flex justify-content-end">
+                <div class="flex-grow-0">
+                    <button type="button"
+                            class="btn btn-danger btn-sm"
+                            title="Delete"
+                            hx-post="{{ url_for('query.delete_query', query_id=query['id']) }}"
+                            hx-target="#savedQueries"
+                            hx-trigger="click"><i class="bi bi-trash3-fill"></i> Delete
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            onclick="copy_to_clipboard('{{ query['text_id'] }}')"><i class="bi bi-clipboard-fill"></i> Copy Query
+                    </button>
+                    <button type="submit"
+                            class="btn btn-success btn-sm"
+                            data-bs-dismiss="modal"
+                            form="{{ query['id'] }}"><i class="bi bi-search"></i> Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="container text-center">
+        <h2 class="text-danger">No Saved Queries 😕</h2>
+    </div>
+    {% endfor %}
+</div>
+<div class="modal-footer bg-primary-subtle" data-bs-theme="dark">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+</div>

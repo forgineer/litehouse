@@ -1,0 +1,163 @@
+{% from 'base.jinja' import get_messages with context %}
+
+
+{% macro entity_fields_breadcrumbs(hx_swap_oob=False) -%}
+<nav id="base_nav_breadcrumbs"
+     class="navbar navbar-expand-lg bg-primary-subtle text-primary-emphasis"
+     {% if hx_swap_oob -%} hx-swap-oob="outerHTML:#base_nav_breadcrumbs" {%- endif %}>
+    <div class="container-fluid">
+        <nav aria-label="breadcrumb" class="d-inline-block">
+            <ol class="breadcrumb fs-6 fw-bold">
+                <li class="breadcrumb-item">Query</li>
+                <li class="breadcrumb-item"><a href="#"
+                                               hx-get="{{ url_for('query.entities') }}"
+                                               hx-swap="outerHTML"
+                                               hx-target="#entity_fields"
+                                               hx-trigger="click">Entities</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ entity_name }}</li>
+            </ol>
+        </nav>
+        <div class="ms-auto">
+            <strong>Selected Org</strong> <button class="btn btn-primary btn-sm" onclick="location.href='{{ url_for('orgs.index') }}'">{{ connection['name'] }}</button> <button class="btn btn-primary btn-sm" onclick="location.href='{{ connection['url'] }}'"><i class="bi bi-box-arrow-up-right"></i></button>
+        </div>
+    </div>
+</nav>
+{%- endmacro %}
+
+
+{% macro query_entity_fields() -%}
+<div id="entity_fields" class="border-start border-end border-secondary-subtle col-5 rounded-start-3">
+    <h4 title="{{ entity_name }}">{{ entity_label }} <!--button class="btn btn-primary btn-xs"
+                                                             hx-get="{{ url_for('query.entities') }}"
+                                                             hx-swap="outerHTML"
+                                                             hx-target="#entity_fields"
+                                                             hx-trigger="click">Search Entities</button--></h4>
+    <div class="mb-2">
+        <input type="text"
+               class="form-control"
+               name="list_search"
+               id="list_search"
+               placeholder="Filter Fields"
+               onkeyup="filter_list()"
+               autocomplete="off">
+    </div>
+    <div id="entity_field_list" class="overflow-auto" style="max-height: 74vh;">
+        <ul id="list_items" class="list-group">
+            {% for entity_field in entity_fields %}
+            <li class="list-group-item">
+                <span>
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-8">
+                                <input type="checkbox" id="{{ entity_field['FieldName'] }}" name="{{ entity_field['FieldLabel'] }}" {% if entity_field['FieldName'] == 'Id' -%} checked {%- endif %}>
+                                <label for="{{ entity_field['FieldName'] }}">{{ entity_field['FieldLabel'] }}</label>
+                            </div>
+                            <div class="col-4 text-end">
+                                {% if entity_field['RequiredFlag'] == '1' -%} <i class="bi bi-exclamation-circle" title="Required"></i> {%- endif %}
+                                {% if entity_field['UniqueField'] == '1' -%} <i class="bi bi-key-fill" title="Unique Key"></i> {%- endif %}
+                                {% if entity_field['ExternalKeyFlag'] == '1' -%} <i class="bi bi-key" title="External Key"></i> {%- endif %}
+                                {% if entity_field['SystemFlag'] == '0' -%} <i class="bi bi-c-square" title="Custom Field"></i> {%- endif %}
+                                {% if entity_field['DefaultValue'] is not none -%} <i class="bi bi-flag" title="Default: {{ entity_field['DefaultValue'] }}"></i> {%- endif %}
+                                {% if 'Entity_Field_Pick_List__EntityFieldIdObj' in entity_field -%}
+                                {% set picklist_id = 'SELECT_' ~ entity_field['FieldName'] %}
+                                    <textarea id="{{ picklist_id }}" style="display: none;">{% for listitem in entity_field['Entity_Field_Pick_List__EntityFieldIdObj'] -%}
+                                    {{ listitem['ListValue'] ~ "\n" }}
+                                    {%- endfor %}</textarea>
+                                    <i class="bi bi-clipboard" title="Copy Values" onclick="copy_to_clipboard('{{ picklist_id }}')"></i>
+                                {%- endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col" style="font-size: 12px;">
+                                {{ entity_field['FieldName'] }}
+                            </div>
+                            <div class="col text-end">
+                                <span class="badge text-bg-secondary"
+                                {% if 'Entity_Field_Pick_List__EntityFieldIdObj' in entity_field -%}
+                                data-bs-toggle="popover"
+                                data-bs-title="Selectable Values"
+                                data-bs-html="true"
+                                data-bs-content='<ul class="list-group">
+                                    {% for listitem in entity_field['Entity_Field_Pick_List__EntityFieldIdObj'] %}
+                                    <li class="list-group-item">{{ listitem['ListValue'] }}</li>
+                                    {% endfor %}
+                                </ul>'
+                                {%- endif %}>
+                                    {{ entity_field['DataType'] }}
+                                    {% if entity_field['DataType'].startswith('TEXT') -%} ({{ entity_field['DataLength'] }}) {%- endif %}
+                                    {% if entity_field['ReferencedEntityIdObj']['EntityName'] is not none -%} ({{ entity_field['ReferencedEntityIdObj']['EntityName'] }}) {%- endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <script>
+        (function() {
+            // Query Builder JS
+            // On load/swap, take inventory of the list of checkboxes (fields)
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            const textarea = document.getElementById('query_text');
+            const entityName = '{{ entity_name }}';
+            let selectedFields = ['Id'];
+
+            // Updating the SQL query textarea
+            function updateSqlQuery() {
+                const sqlQuery = `SELECT\n ${selectedFields.join('\n, ')} \nFROM ${entityName}`;
+                textarea.value = sqlQuery;
+            }
+
+            // Set a default SQL statement from the given entity Name
+            updateSqlQuery();
+
+            // Event listener for when a checkbox is checked/unchecked
+            checkboxes.forEach((checkbox) => {
+                checkbox.addEventListener('change', (e) => {
+                    const fieldName = e.target.id;
+
+                    if (e.target.checked) {
+                        selectedFields.push(fieldName);
+                    } else {
+                        selectedFields = selectedFields.filter((field) => field !== fieldName);
+                    }
+
+                    updateSqlQuery();
+                });
+            });
+
+            // Activate popovers (for picklist value display)
+            const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
+            const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
+
+            // Close each popover after five seconds
+            document.addEventListener('htmx:afterSwap', function() {
+                const popoverTriggers = document.querySelectorAll('[data-bs-toggle="popover"]');
+
+                popoverTriggers.forEach(trigger => {
+                    const popover = new bootstrap.Popover(trigger);
+
+                    trigger.addEventListener('shown.bs.popover', function() {
+                        setTimeout(function() {
+                            popover.hide();
+                        }, 5000); // 5000 milliseconds = 5 seconds
+                    });
+                });
+            });
+        })();
+        {% include 'copy_to_clipboard.js' %}
+    </script>
+</div>
+{%- endmacro %}
+
+
+{# Insert or Swap Entity Fields List #}
+{{ query_entity_fields() }}
+
+{# Update Breadcrumbs #}
+{{ entity_fields_breadcrumbs(hx_swap_oob=True) }}
+
+{# Flash Message (if any) #}
+{{ get_messages(hx_swap_oob=True) }}

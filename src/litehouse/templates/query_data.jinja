@@ -1,0 +1,178 @@
+{% import 'form_macros.jinja' as form %}
+{% from 'base.jinja' import get_messages with context %}
+
+
+{% macro query_data_breadcrumbs(hx_swap_oob=False) -%}
+<nav id="base_nav_breadcrumbs"
+     class="navbar navbar-expand-lg bg-primary-subtle text-primary-emphasis"
+     {% if hx_swap_oob -%} hx-swap-oob="outerHTML:#base_nav_breadcrumbs" {%- endif %}>
+    <div class="container-fluid">
+        <nav aria-label="breadcrumb" class="d-inline-block">
+            <ol class="breadcrumb fs-6 fw-bold">
+                <li class="breadcrumb-item">Query</li>
+                <li class="breadcrumb-item"><a href="{{ url_for('query.index') }}">Entities</a></li>
+                <li class="breadcrumb-item" aria-current="page">{{ query_entity }}</li>
+              <li class="breadcrumb-item active" aria-current="page">Data</li>
+            </ol>
+        </nav>
+        <div class="ms-auto">
+            <strong>Selected Org</strong> <button class="btn btn-primary btn-sm" onclick="location.href='{{ url_for('orgs.index') }}'">{{ connection['name'] }}</button> <button class="btn btn-primary btn-sm" onclick="location.href='{{ connection['url'] }}'"><i class="bi bi-box-arrow-up-right"></i></button>
+        </div>
+    </div>
+</nav>
+{%- endmacro %}
+
+
+{% macro save_query_modal(hx_swap_oob=False) -%}
+<div id="base_modals"
+     {% if hx_swap_oob -%} hx-swap-oob="outerHTML:#base_modals" {%- endif %}>
+
+    {# Saved Query Modal #}
+    <div class="modal fade" id="saveQueryModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div id="saveQuery" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Save Query</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="save_query"
+                          autocomplete="off"
+                          hx-post="{{ url_for('query.save_query') }}"
+                          hx-swap="outerHTML"
+                          hx-target="#base_messages">
+
+                    {# Query Name #}
+                    {{ form.add_input(id='query_name', label='Query Name:', required=True) }}
+
+                    {# Query Text #}
+                    {{ form.add_textarea(id='query_text', value=query_text, readonly=True) }}
+
+                    {# Limit and Offset #}
+                    {{ form.add_input(type="number", id='query_limit', label='Limit:', value=query_limit, readonly=True) }}
+                    {{ form.add_input(type="number", id='query_offset', label='Offset:', value=query_offset, readonly=True) }}
+
+                    {# Query Entity #}
+                    {{ form.add_input(type='hidden', id='query_entity', value=query_entity, readonly=True) }}
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-success" data-bs-dismiss="modal" form="save_query">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{%- endmacro %}
+
+
+{% macro display_data(hx_swap_oob=False) -%}
+<div id="query" class="p-3"
+     {% if hx_swap_oob -%} hx-swap-oob="outerHTML:#query" {%- endif %}>
+
+    <div class="text-center">
+
+        {# Refresh Query Data #}
+        <button type="button"
+                class="btn btn-light border border-primary-subtle"
+                hx-on:click="destroy_table()"
+                hx-get="{{ url_for('query.refresh_data') }}"
+                hx-swap="outerHTML"
+                hx-target="#base_messages"
+                hx-indicator="#refresh_indicator"
+                hx-disabled-elt="this"><i class="bi bi-arrow-clockwise"></i> Refresh Data <img id="refresh_indicator" class="htmx-indicator" height="15px" src="{{ url_for('static', filename='bars.svg') }}"/>
+        </button>
+
+        {# Download As... #}
+        <div class="btn-group">
+            <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-download"></i> Download As...
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-dark">
+                <li><a class="dropdown-item"
+                       href="{{ url_for('query.download_query_data', file_type='csv') }}"><i class="bi bi-filetype-csv"></i> CSV</a></li>
+
+                <li><a class="dropdown-item"
+                       href="{{ url_for('query.download_query_data', file_type='xlsx') }}"><i class="bi bi-file-earmark-excel"></i> Excel (xlsx)</a></li>
+
+                <li><a class="dropdown-item"
+                       href="{{ url_for('query.download_query_data', file_type='json') }}"><i class="bi bi-filetype-json"></i> JSON</a></li>
+            </ul>
+        </div>
+
+        {# Save Query #}
+        {% if not saved_query %}
+        <button id="save_query_button"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#saveQueryModal"
+                class="btn btn-dark"><i class="bi bi-floppy"></i> Save Query
+        </button>
+        {% endif %}
+    </div>
+
+    {# Data Table #}
+    <div class="p-3">
+        {{ data|safe }}
+    </div>
+
+    <script>
+        // Build the DataTable object
+        var table = new DataTable('#data_table', {
+            scrollY: '65vh',
+            scrollX: true,
+            scrollCollapse: true,
+            autoWidth: false,
+            fixedHeader: true,
+            pageLength: 50,
+
+            layout: {
+                topStart: 'info',
+                topEnd: {
+                    search: {
+                        placeholder: 'Type search here'
+                    },
+                    paging: {
+                        buttons: 5
+                    }
+                },
+                bottomStart: null,
+                bottomEnd: null
+            }
+        });
+
+        // Setting an event listener for when the DOM has settled after swapping.
+        // The column header in the DataTable tends to get become unaligned with the rest of the data.
+        // This listener will wait until the page has settled and adjusts/redraws the columns to the right length.
+        document.body.addEventListener('htmx:afterSettle', function () {
+            table.columns.adjust().draw()
+        });
+
+        // To refresh the dataset, the DataTable object needs to be destroyed first before it can be rebuilt.
+        // At the same time, we will remove the HTML table for a visual effect.
+        function destroy_table() {
+            // Remove the DataTable Object
+            table.destroy();
+
+            // Remove the HTML table
+            const data_table = document.getElementById("data_table");
+            data_table.remove();
+        };
+    </script>
+</div>
+{%- endmacro %}
+
+
+{# Update Breadcrumbs #}
+{{ query_data_breadcrumbs(hx_swap_oob=True) }}
+
+{# Swap Modals: Save Query #}
+{{ save_query_modal(hx_swap_oob=True) }}
+
+{# Swap Data Table #}
+{{ display_data(hx_swap_oob=True) }}
+
+{# Flash Message (if any) #}
+{{ get_messages() }}

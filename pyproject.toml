@@ -1,0 +1,24 @@
+[project]
+name = "litehouse"
+version = "0.1.0"
+description = "A minimalist Flask framework providing web administration and powerful API tooling for SQLite databases."
+license = "MIT"
+readme = "README.md"
+authors = [
+    { name = "Blake Phillips", email = "blake.phillips86@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.1.2",
+    "libsql>=0.1.11",
+    "pandas>=2.3.2",
+    "sqlitecloud>=0.0.84",
+    "xlsxwriter>=3.2.9",
+]
+
+[project.scripts]
+litehouse = "litehouse:main"
+
+[build-system]
+requires = ["uv_build>=0.8.22,<0.9.0"]
+build-backend = "uv_build"

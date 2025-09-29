@@ -1,0 +1,9 @@
+{% from 'base.jinja' import get_messages with context %}
+{% from 'orgs.jinja' import list_connections with context %}
+
+
+{# Refresh Connections List #}
+{{ list_connections(connections, enabled_connection, hx_swap_oob=True) }}
+
+{# Flash Message (if any) #}
+{{ get_messages() }}

@@ -1,0 +1,189 @@
+{% extends 'base.jinja' %}
+{% import 'form_macros.jinja' as form %}
+{% from 'query_entities.jinja' import entity_breadcrumbs, query_entities with context%}
+
+
+{% macro set_style() -%}
+<style id="base_style">
+    body {
+        padding-top: 0%; --bs-breadcrumb-divider: '>';
+    }
+
+    #query_text {
+        height: 500px;
+    }
+
+    .btn-group-xs > .btn, .btn-xs {
+        padding: .25rem .4rem;
+        font-size: .875rem;
+        line-height: .5;
+        border-radius: .2rem;
+    }
+
+    .list-disabled a {
+        pointer-events: none;
+        opacity: 0.6; /* Optional: Add visual feedback */
+    }
+</style>
+{%- endmacro %}
+
+
+{% macro set_nav_links(hx_swap_oob=False) -%}
+<div id="collapsibleNavbar"
+     class="collapse navbar-collapse"
+     {% if hx_swap_oob -%} hx-swap-oob="innerHTML:#collapsibleNavbar" {%- endif %}>
+    <ul class="navbar-nav">
+        {# Orgs (Connections) View Navigation #}
+        <li id="orgs_nav_item" class="nav-item">
+            <a class="nav-link"
+               href="{{ url_for('orgs.index') }}"
+               title="ORGS"><i class="bi bi-building-fill-gear"></i> ORGS
+            </a>
+        </li>
+
+        {# Query View Navigation. For Entity, Bulk Data Backups, etc. #}
+        <li id="query_nav_item" class="nav-item">
+            <a class="nav-link active"
+               href="#"
+               title="QUERY"><i class="bi bi-search"></i> QUERY
+            </a>
+        </li>
+    </ul>
+</div>
+{%- endmacro %}
+
+
+{% macro set_modals(hx_swap_oob=False) -%}
+<div id="base_modals"
+     {% if hx_swap_oob -%} hx-swap-oob="outerHTML:#base_modals" {%- endif %}>
+    {# Retrieve Saved Queries Modal #}
+    <div class="modal fade" id="savedQueriesModal" tabindex="-1">
+        <div class="modal-dialog modal-fullscreen">
+            <div id="savedQueries" class="modal-content">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Updating...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{%- endmacro %}
+
+
+{% macro query_form() -%}
+<div id="query_form" class="border-start border-end border-secondary-subtle col-7 overflow-auto rounded-end-3">
+    <h4>Query</h4>
+    <form id="query_data"
+          autocomplete="off"
+          hx-post="{{ url_for('query.query_data') }}"
+          hx-swap="outerHTML"
+          hx-target="#base_messages">
+        <div class="d-flex">
+            <button type="button"
+                    class="btn btn-light btn-block border border-dark text-dark w-50 me-1"
+                    data-bs-toggle="modal"
+                    data-bs-target="#savedQueriesModal"
+                    hx-get="{{ url_for('query.saved_queries') }}"
+                    hx-target="#savedQueries"
+                    hx-swap="innerHTML"
+                    hx-trigger="click"><i class="bi bi-floppy-fill"></i> Saved Queries
+            </button>
+            <button type="submit"
+                    class="btn btn-light btn-block border border-success-subtle text-success w-50 ms-1"
+                    hx-indicator="#submit_indicator"
+                    hx-disabled-elt="this"><i class="bi bi-search"></i> Submit Query <img id="submit_indicator" class="htmx-indicator" height="15px" src="{{ url_for('static', filename='bars.svg') }}"/>
+            </button>
+        </div><br>
+        <div class="row">
+            <div class="col">
+                <input type="number" 
+                       class="form-control" 
+                       placeholder="Limit" 
+                       name="limit"
+                       {% if current_query_limit != 0 -%} value="{{ current_query_limit }}" {%- endif %}>
+            </div>
+            <div class="col">
+                <input type="number" 
+                       class="form-control" 
+                       placeholder="Offset" 
+                       name="offset"
+                       {% if current_query_offset != 0 -%} value="{{ current_query_offset }}" {%- endif %}>
+            </div>
+        </div><br>
+        <div class="row rounded-3">
+            {{ form.add_textarea(id='query_text', value=current_query, required=True) }}
+        </div>
+        <div class="d-flex">
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    onclick="copy_to_clipboard('query_text')"><i class="bi bi-clipboard-fill"></i> Copy Query
+            </button>
+        </div>
+    </form>
+</div>
+{%- endmacro %}
+
+
+{% macro set_script() -%}
+<script id="base_script">
+    {% include 'filter_list.js' %}
+    {% include 'copy_to_clipboard.js' %}
+</script>
+{%- endmacro %}
+
+
+{% block base_style %}
+    {{ set_style() }}
+{% endblock %}
+
+
+{% block base_nav_links %}
+    {{ set_nav_links() }}
+{% endblock %}
+
+
+{% block base_modals %}
+    {{ set_modals() }}
+{% endblock %}
+
+
+{% block base_nav_breadcrumbs %}
+    {{ entity_breadcrumbs() }}
+{% endblock %}
+
+
+{% block base_main %}
+<div id="query" class="container p-3">
+    <div class="row">
+        {# Entities Section #}
+        {{ query_entities() }}
+
+        {# Query Section #}
+        {{ query_form() }}
+    </div>
+</div>
+<script>
+    document.addEventListener('htmx:beforeRequest', function(event) {
+        const listItem = event.detail.elt; // The LI that triggered the request
+        const list = listItem.closest('#list_items'); // Find the UL
+
+        if (list) {
+            list.classList.add('list-disabled');
+        }
+    });
+
+    document.addEventListener('htmx:afterRequest', function(event) {
+        const listItem = event.detail.elt; // The LI that triggered the request
+        const list = listItem.closest('#list_items'); // Find the UL
+
+        if (list) {
+            list.classList.remove('list-disabled');
+        }
+    });
+</script>
+{% endblock %}
+
+
+{% block base_script %}
+    {{ set_script() }}
+{% endblock %}

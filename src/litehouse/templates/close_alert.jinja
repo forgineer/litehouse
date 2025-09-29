@@ -1,0 +1,9 @@
+{# On Message Flash: Set timer for automatic alert closure #}
+<script>
+    setTimeout(function() {
+        document.querySelectorAll('.alert').forEach(function(alert) {
+            let alertInstance = bootstrap.Alert.getOrCreateInstance(alert);
+            alertInstance.close();
+        });
+    }, 5000);
+</script>

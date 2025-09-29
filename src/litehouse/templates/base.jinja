@@ -1,0 +1,107 @@
+{# Retrieves flashed messages submitted from the backend #}
+{% macro get_messages(hx_swap_oob=False) -%}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div id="base_messages" class="fixed-bottom p-2"
+                     {% if hx_swap_oob -%} hx-swap-oob="outerHTML:#base_messages" {%- endif %}>
+                    {% if category == 'error' %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-circle-fill"></i> {{ message }}
+                    {% elif category == 'warning' %}
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill"></i> {{ message }}
+                    {% elif category == 'info' %}
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="bi bi-check-circle"></i> {{ message }}
+                    {% endif %}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% include 'close_alert.jinja' %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div id="base_messages" class="fixed-bottom p-2"
+                 {% if hx_swap_oob -%} hx-swap-oob="outerHTML:#base_messages" {%- endif %}>
+            </div>
+        {% endif %}
+    {% endwith %}
+{%- endmacro %}
+
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no" />
+
+        <title>BillingKit</title>
+
+        <link rel="apple-touch-icon" sizes="120x120" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
+        <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
+        <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+        <link rel="mask-icon" href="{{ url_for('static', filename='safari-pinned-tab.svg') }}">
+
+        <meta name="msapplication-TileColor" content="#00a300">
+        <meta name="theme-color" content="#ffffff">
+
+        {# bootstrap 5.3.2 (CSS) #} <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+        {# bootstrap icons 1.11.3 #} <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-icons.min.css') }}">
+        {# datatables 2.1.4 (CSS) #} <link rel="stylesheet" href="{{ url_for('static', filename='datatables.min.css') }}">
+        {# bootstrap 5.3.2 (JS) #} <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+        {# htmx 2.0.1 #} <script src="{{ url_for('static', filename='htmx.min.js') }}"></script>
+        {# datatables 2.1.4 (JS) #} <script src="{{ url_for('static', filename='datatables.min.js') }}"></script>
+        <style>
+            .htmx-indicator{
+                display: none;
+            }
+
+            .htmx-request .htmx-indicator {
+                display: inline;
+            }
+
+            .htmx-request.htmx-indicator {
+                display: inline;
+            }
+
+            .popover-body {
+                max-height: 400px; /* Adjust as needed */
+                overflow-y: auto;
+            }
+        </style>
+        {% block base_style %}{% endblock %}
+    </head>
+    <body>
+        {# Main navigation bar. Navigation links are enabled/disabled at each view. #}
+        <nav id="base_navbar" class="navbar navbar-expand-sm bg-primary-subtle navbar-dark" data-bs-theme="dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/">
+                    <img src="{{ url_for('static', filename='cognizant_c_logo.jpg') }}" alt="Cognizant Logo" style="width:35px;" class="rounded-pill">
+                    <span class="navbar-brand mb-0 h1" title="Cognizant BillingKit">BillingKit</span>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                {% block base_nav_links %}{% endblock %}
+            </div>
+        </nav>
+
+        {# Breadcrumbs nav is also defined at each view. #}
+        {% block base_nav_breadcrumbs %}{% endblock %}
+
+        {# Modals can be defined under each view. Use HTMX to make dynamic filling and execution. #}
+        {% block base_modals %}{% endblock %}
+
+        {# Main content driven from each view. #}
+        <main>
+            {% block base_main %}{% endblock %}
+        </main>
+
+        {# Area for flashing messages with Bootstrap alerts. Error (Red), Warning (Yellow), else Success (Green) #}
+        {{ get_messages() }}
+
+        {# Each view can also include its own use of JS for interactivity. #}
+        {% block base_script %}{% endblock %}
+    </body>
+</html>

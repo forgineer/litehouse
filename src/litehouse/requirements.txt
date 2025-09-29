@@ -1,0 +1,6 @@
+# Used for installing dependencies for local development.
+# The dependencies listed here (along with the python versions use) should match the pyproject.toml file at the root of the repository.
+Flask==3.0.3
+pandas==2.2.2
+requests==2.32.3
+XlsxWriter==3.2.0

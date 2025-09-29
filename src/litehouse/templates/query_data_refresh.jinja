@@ -1,0 +1,9 @@
+{% from 'base.jinja' import get_messages with context %}
+{% from 'query_data.jinja' import display_data with context %}
+
+
+{# Refreshed Data Table #}
+{{ display_data(hx_swap_oob=True) }}
+
+{# Flash Message (if any) #}
+{{ get_messages() }}

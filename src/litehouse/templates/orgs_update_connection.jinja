@@ -1,0 +1,53 @@
+{% import 'form_macros.jinja' as form %}
+
+
+{# Update the 'updateConnection' Modal with attributes from the selected Connection. #}
+<div class="modal-header text-light bg-primary-subtle" data-bs-theme="dark">
+    <h5 class="modal-title">Update {{ connection['name'] }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <form id="update_connection"
+          autocomplete="off"
+          hx-post="{{ url_for('orgs.update_connection') }}"
+          hx-swap="outerHTML"
+          hx-target="#base_messages">
+
+        {# Key Values (hidden) and Base URL #}
+        {{ form.add_input(id='id', type='hidden', value=connection['id']) }}
+        {{ form.add_input(id='name', type='hidden', value=connection['name']) }}
+        {{ form.add_input(id='url', label='BillingPlatform Base URL:', value=connection['url'], required=True) }}
+
+        {# Username and Password #}
+        <hr><br><h5 class="text-primary">Login Credentials (Session)</h3>
+        {{ form.add_input(id='username', label='Username:', value=connection['username'], required=True) }}
+        {{ form.add_input(id='password', type='password', label='Password:', value=connection['password'], required=True) }}
+
+
+        {# OAuth Client Id and Secret #}
+        <hr><br><h5 class="text-success">Inbound OAuth Key</h3>
+        {{ form.add_input(id='client_id', type='password', label='Client ID:', value=connection['client_id']) }}
+        {{ form.add_input(id='client_secret', type='password', label='Client Secret:', value=connection['client_secret']) }}
+
+        {# Selection of Session or OAuth as method for login #}
+        <hr><br><h5 class="text-danger">API Settings</h3>
+        <p>Modify API use setting here such as authenticating with a session vs. OAuth token.</p>
+        <div class="mb-2 p-3">
+            {{ form.add_radio(id='session', name='auth_mode', value='Session', check=connection['auth_mode']) }}
+            {{ form.add_radio(id='oauth', name='auth_mode', value='OAuth', check=connection['auth_mode']) }}
+        </div>
+
+        {# Auth and REST version override controls #}
+        <br><p>If the Auth or REST APIs use different versions between orgs they can be adjusted here:</p>
+        {{ form.add_input(id='auth_version', label='Auth Version:', value=connection['auth_version'], placeholder='1.0') }}
+        {{ form.add_input(id='rest_version', label='REST Version:', value=connection['rest_version'], placeholder='2.0') }}
+
+        {# SSL Certificate Path #}
+        <br><p>Provide a path to an external SSL Certificate for authenticating REST services:</p>
+        {{ form.add_input(id='cert_path', label='SSL Certificate Path:', value=connection['request_args']['verify']) }}
+    </form>
+</div>
+<div class="modal-footer bg-primary-subtle" data-bs-theme="dark">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-success" form="update_connection">Save</button>
+</div>
